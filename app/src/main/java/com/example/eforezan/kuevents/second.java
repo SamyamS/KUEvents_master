@@ -42,7 +42,7 @@ public class second extends AppCompatActivity {
     private Button button_sbm;
     private Button button_showdb;
 
-    int attempt_counter = 1;
+    //int attempt_counter = 1;
 
 
 
@@ -87,7 +87,7 @@ public class second extends AppCompatActivity {
             }
         });
 
-        radio_g = (RadioGroup) findViewById(R.id.radio_group);
+        //radio_g = (RadioGroup) findViewById(R.id.radio_group);
        // int selected_id = radio_g.getCheckedRadioButtonId();
         //radio_b = (RadioButton) findViewById(selected_id);
 
@@ -97,7 +97,7 @@ public class second extends AppCompatActivity {
         mDatabase = FirebaseDatabase.getInstance().getReference().child("Attendee");
 
 
-        AddData();
+       // AddData();
         showdb();
 
 
@@ -106,7 +106,7 @@ public class second extends AppCompatActivity {
 
 
 
-    public void AddData() {
+    /*public void AddData() {
         button_sbm.setOnClickListener(
                 new View.OnClickListener() {
                     @Override
@@ -149,7 +149,7 @@ public class second extends AppCompatActivity {
         );
 
 
-    }
+    }*/
 
 
 

@@ -9,6 +9,7 @@ import android.support.v7.widget.RecyclerView;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -27,13 +28,18 @@ public class HomePage extends AppCompatActivity {
 
     private RecyclerView mEventList;
 
+
     private DatabaseReference mDatabase;
+    private DatabaseReference mDatabaseUsers;
 
     private DatabaseReference sDatabase;
 
     private FirebaseAuth mAuth;
-
+    private FirebaseAuth.AuthStateListener mAuthListener;
     private FirebaseUser mCurrentUser;
+
+    private boolean mProcessGoing = false;
+
 
 
     @Override
@@ -43,17 +49,29 @@ public class HomePage extends AppCompatActivity {
 
         mAuth = FirebaseAuth.getInstance();
         mCurrentUser = mAuth.getCurrentUser();
+        if(mCurrentUser == null){
+            Intent loginIntent = new Intent(HomePage.this, LoginActivity.class);
+            loginIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            startActivity(loginIntent);
+        }
 
         mDatabase = FirebaseDatabase.getInstance().getReference().child("Events");
+        mDatabaseUsers = FirebaseDatabase.getInstance().getReference().child("Users");
+
+        mDatabase.keepSynced(true);
+        mDatabaseUsers.keepSynced(true);
 
         mEventList = (RecyclerView) findViewById(R.id.event_list);
         mEventList.setHasFixedSize(true);
         mEventList.setLayoutManager(new LinearLayoutManager(this));
+
     }
 
     @Override
     protected void onStart() {
         super.onStart();
+
+        TextView going = (TextView) findViewById(R.id.going_status);
 
         FirebaseRecyclerAdapter<Event, EventViewHolder> firebaseRecyclerAdapter = new FirebaseRecyclerAdapter<Event, EventViewHolder>(
                 Event.class,
@@ -69,14 +87,10 @@ public class HomePage extends AppCompatActivity {
                 viewHolder.setTitle(model.getTitle());
                 viewHolder.setImage(getApplicationContext(), model.getImage());
                 viewHolder.setStart_Date(model.getStart_date());
-
-                viewHolder.setLatitude(model.getLatitude());
-                viewHolder.setLongitude(model.getLongitude());
+                viewHolder.setgoingbtn(post_key);
+                //viewHolder.setLatitude(model.getLatitude());
+                //viewHolder.setLongitude(model.getLongitude());
                 // This is used in second.java
-
-
-
-
                 viewHolder.mView.setOnClickListener(new View.OnClickListener() {
 
                     @Override
@@ -85,6 +99,35 @@ public class HomePage extends AppCompatActivity {
                         Intent singleEventIntent = new Intent(HomePage.this, second.class);
                         singleEventIntent.putExtra("event_id", post_key);
                         startActivity(singleEventIntent);
+                    }
+                });
+
+                viewHolder.mGoingbtn.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View view) {
+                        mProcessGoing = true;
+                        mDatabase.addValueEventListener(new ValueEventListener() {
+                            @Override
+                            public void onDataChange(DataSnapshot dataSnapshot) {
+                                if (mProcessGoing){
+                                    if (dataSnapshot.child(post_key).child("Attendee").hasChild(mAuth.getCurrentUser().getUid())){
+                                        mDatabase.child(post_key).child("Attendee").child(mAuth.getCurrentUser().getUid()).removeValue();
+                                        mProcessGoing = false;
+
+
+                                    }else{
+                                        mDatabase.child(post_key).child("Attendee").child(mAuth.getCurrentUser().getUid()).setValue("Random");
+                                        mProcessGoing = false;
+                                    }
+                                }
+                            }
+
+                            @Override
+                            public void onCancelled(DatabaseError databaseError) {
+
+                            }
+                        });
+
                     }
                 });
 
@@ -101,17 +144,50 @@ public class HomePage extends AppCompatActivity {
     public static class EventViewHolder extends RecyclerView.ViewHolder{
 
         View mView;
+        ImageButton mGoingbtn;
+        DatabaseReference mDatabase;
+        FirebaseAuth mAuth;
+        TextView going;
 
         public EventViewHolder(View itemView) {
             super(itemView);
             mView = itemView;
+            mGoingbtn = (ImageButton) mView.findViewById(R.id.going_btn);
+            mDatabase = FirebaseDatabase.getInstance().getReference().child("Events");
+            mAuth = FirebaseAuth.getInstance();
+            mDatabase.keepSynced(true);
+            going = mView.findViewById(R.id.going_status);
 
         }
+
+        public void setgoingbtn(final String post_key){
+            mDatabase.addValueEventListener(new ValueEventListener() {
+                @Override
+                public void onDataChange(DataSnapshot dataSnapshot) {
+                    if (dataSnapshot.child(post_key).child("Attendee").hasChild(mAuth.getCurrentUser().getUid())){
+                        mGoingbtn.setImageResource(R.mipmap.ic_bookmark_black_24dp);
+                        going.setText("Going");
+
+                    }else{
+                        mGoingbtn.setImageResource(R.mipmap.ic_bookmark_border_black_24dp);
+                        going.setText("Are you going?");
+                    }
+                }
+
+                @Override
+                public void onCancelled(DatabaseError databaseError) {
+
+                }
+            });
+
+        }
+
         public void setTitle(String title){
             TextView post_title = (TextView) mView.findViewById(R.id.post_title);
             post_title.setText(title);
 
         }
+
 
 
 
@@ -126,27 +202,13 @@ public class HomePage extends AppCompatActivity {
             post_date.setText(start_date);
         }
 
-        public void setLatitude(double Latitude){
-            TextView post_lat = (TextView) mView.findViewById(R.id.post_latitude);
-            String lat = Double.toString(Latitude);
-            post_lat.setText(lat);
 
-        }
-
-        public void setLongitude(double Longitude){
-            TextView post_lon = (TextView) mView.findViewById(R.id.post_longitude);
-            String longi = Double.toString(Longitude);
-            post_lon.setText(longi);
-
-        }
     }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.main_menu, menu);
         return super.onCreateOptionsMenu(menu);
-
-
     }
 
     @Override
